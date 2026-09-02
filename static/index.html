@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendor Onboarding Verification Process</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Vendor Verification Engine</h1>
+          <span class="subtitle">Automated Compliance, Cross-Document Cross-Referencing & Risk Engine</span>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <nav class="nav-tabs">
+          <button class="nav-tab active" data-view="submit-view">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Submit & Scenarios
+          </button>
+          <button class="nav-tab" data-view="live-view" id="nav-live-tab">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Live Verification Stream
+            <span class="live-indicator hidden" id="live-pulse"></span>
+          </button>
+          <button class="nav-tab" data-view="ledger-view" id="nav-ledger-tab">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+            Runs & Vendor Ledger
+          </button>
+        </nav>
+        
+        <button class="btn-secondary btn-sm" id="btn-reset-db" title="Clear run history and seed ledger">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Reset Database
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="main-content">
+    
+    <!-- ============================================================ -->
+    <!-- VIEW 1: SUBMIT & PREPARED SCENARIOS                          -->
+    <!-- ============================================================ -->
+    <section class="view active" id="submit-view">
+      
+      <!-- Prepared Scenario Selector Cards -->
+      <div class="section-card preset-scenarios-card">
+        <div class="card-header">
+          <div>
+            <h2>One-Click Scenario Presets</h2>
+            <p class="text-muted">Instantly load test cases with pre-generated machine-readable PDFs to test edge cases & fraud rules live.</p>
+          </div>
+          <span class="pill-info">8 Scenario Presets Ready</span>
+        </div>
+
+        <div class="scenarios-grid">
+          <!-- Scenario 1 -->
+          <div class="scenario-card" data-scenario="scenario_1_approved">
+            <div class="scenario-badge badge-approved">Approved</div>
+            <div class="scenario-title">1. Happy Path</div>
+            <div class="scenario-vendor">Bluewave Logistics Inc (US)</div>
+            <p class="scenario-desc">All legal names, US EIN, and bank letters match consistently across form and all 3 documents. Valid tax cert through 2027.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 2 -->
+          <div class="scenario-card" data-scenario="scenario_2_wrong_company_docs">
+            <div class="scenario-badge badge-rejected">Rejected</div>
+            <div class="scenario-title">2. Wrong Company Documents</div>
+            <div class="scenario-vendor">Bluewave vs Meridian Docs (US)</div>
+            <p class="scenario-desc">Bluewave submission with Meridian Traders LLC's registration and tax certs attached. Critical inconsistency -> Rejected.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 3 -->
+          <div class="scenario-card" data-scenario="scenario_3_field_typo_pending">
+            <div class="scenario-badge badge-pending">Pending</div>
+            <div class="scenario-title">3. Account Number Typo</div>
+            <div class="scenario-vendor">Bluewave Logistics (US)</div>
+            <p class="scenario-desc">Form account is typed '999999999999' while bank letter shows '000123456789'. Fixable gap -> Pending (quotes both).</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 4a -->
+          <div class="scenario-card" data-scenario="scenario_4a_pending">
+            <div class="scenario-badge badge-pending">Pending</div>
+            <div class="scenario-title">4a. Name Mismatch (No Note)</div>
+            <div class="scenario-vendor">Nimbus Retail Ltd (UK)</div>
+            <p class="scenario-desc">Bank account is held by parent company <em>Nimbus Group Holdings</em> without relationship note. Needs clarification.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 4b -->
+          <div class="scenario-card" data-scenario="scenario_4b_approved">
+            <div class="scenario-badge badge-approved">Approved</div>
+            <div class="scenario-title">4b. Name Mismatch (With Note)</div>
+            <div class="scenario-vendor">Nimbus Retail Ltd (UK)</div>
+            <p class="scenario-desc">Identical data, but with vendor explanation note stating banking handled by parent company. Clears check.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 5 -->
+          <div class="scenario-card" data-scenario="scenario_5_rejected">
+            <div class="scenario-badge badge-rejected">Rejected</div>
+            <div class="scenario-title">5. Tax ID Country Fraud</div>
+            <div class="scenario-vendor">Meridian Traders LLC (US)</div>
+            <p class="scenario-desc">Declares US jurisdiction, but Tax ID is formatted as UK VAT (GB998877665). Hard inconsistency.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 6a & 6b Group -->
+          <div class="scenario-card" data-scenario="scenario_6a_seed_vantage">
+            <div class="scenario-badge badge-approved">Approved (Step 1)</div>
+            <div class="scenario-title">6a. Seed Vantage Freight</div>
+            <div class="scenario-vendor">Vantage Freight Co (DE)</div>
+            <p class="scenario-desc">Initial German vendor onboarding. Registers bank account <code>DE89370400...</code> into ledger.</p>
+            <button class="btn-scenario-load">Load & Seed Ledger</button>
+          </div>
+
+          <div class="scenario-card" data-scenario="scenario_6b_sterling_duplicate">
+            <div class="scenario-badge badge-rejected">Rejected (Step 2)</div>
+            <div class="scenario-title">6b. Duplicate Bank Reuse</div>
+            <div class="scenario-vendor">Sterling Freight Partners (DE)</div>
+            <p class="scenario-desc">Different company attempting to register the SAME bank account as Vantage Freight. Critical fraud override.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 7a & 7b Group -->
+          <div class="scenario-card" data-scenario="scenario_7a_seed_anchor">
+            <div class="scenario-badge badge-approved">Approved (Step 1)</div>
+            <div class="scenario-title">7a. Seed Anchor Supplies</div>
+            <div class="scenario-vendor">Anchor Supplies Pvt Ltd (IN)</div>
+            <p class="scenario-desc">Initial Indian vendor registration with valid tax certificate (valid until 2027-06-30).</p>
+            <button class="btn-scenario-load">Load & Seed Ledger</button>
+          </div>
+
+          <div class="scenario-card" data-scenario="scenario_7b_anchor_expired">
+            <div class="scenario-badge badge-pending">Lightweight Pending</div>
+            <div class="scenario-title">7b. Expired Tax Doc (Returning)</div>
+            <div class="scenario-vendor">Anchor Supplies Pvt Ltd (IN)</div>
+            <p class="scenario-desc">Returning vendor resubmitting with expired tax doc (2025-06-30). Triggers lightweight follow-up message.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual Submission Form -->
+      <div class="section-card form-card">
+        <div class="card-header">
+          <div>
+            <h2>Vendor Submission Form</h2>
+            <p class="text-muted">Enter vendor profile information and attach three PDF documents for automated verification.</p>
+          </div>
+          <button type="button" class="btn-ghost" id="btn-clear-form">Clear Form</button>
+        </div>
+
+        <form id="vendor-submission-form" enctype="multipart/form-data">
+          <input type="hidden" name="scenario_preset" id="scenario_preset" value="">
+          
+          <div class="form-grid">
+            
+            <!-- Company & Contact Section -->
+            <div class="form-section">
+              <h3 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Company & Contact Information
+              </h3>
+              
+              <div class="form-group">
+                <label for="legal_company_name">Legal Company Name <span class="req">*</span></label>
+                <input type="text" id="legal_company_name" name="legal_company_name" required placeholder="e.g. Bluewave Logistics Inc">
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="trading_name">Trading / DBA Name <span class="opt">(Optional)</span></label>
+                  <input type="text" id="trading_name" name="trading_name" placeholder="e.g. Bluewave">
+                </div>
+                <div class="form-group">
+                  <label for="vendor_category">Vendor Category</label>
+                  <input type="text" id="vendor_category" name="vendor_category" value="General" placeholder="e.g. Logistics & Freight">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="country">Country of Incorporation <span class="req">*</span></label>
+                  <select id="country" name="country" required>
+                    <option value="">Select Country...</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                    <option value="Germany">Germany</option>
+                    <option value="India">India</option>
+                    <option value="Singapore">Singapore</option>
+                    <option value="United Arab Emirates">United Arab Emirates</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="address">Registered Address <span class="req">*</span></label>
+                  <input type="text" id="address" name="address" required placeholder="Street, City, Postcode">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="contact_name">Primary Contact Name <span class="req">*</span></label>
+                  <input type="text" id="contact_name" name="contact_name" required placeholder="e.g. Dana Cole">
+                </div>
+                <div class="form-group">
+                  <label for="contact_email">Contact Email Address <span class="req">*</span></label>
+                  <input type="email" id="contact_email" name="contact_email" required placeholder="dana.cole@company.com">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="contact_phone">Contact Phone Number <span class="req">*</span></label>
+                <input type="tel" id="contact_phone" name="contact_phone" required placeholder="+1-302-555-0148">
+              </div>
+            </div>
+
+            <!-- Legal & Banking Section -->
+            <div class="form-section">
+              <h3 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Legal Registration & Banking Details
+              </h3>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="registration_number">Company Registration No. <span class="req">*</span></label>
+                  <input type="text" id="registration_number" name="registration_number" required placeholder="e.g. US-DE-4471829">
+                </div>
+                <div class="form-group">
+                  <label for="tax_id">Tax ID / VAT / GSTIN / EIN <span class="req">*</span></label>
+                  <input type="text" id="tax_id" name="tax_id" required placeholder="e.g. 47-3829104 or DE811234567">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="bank_name">Bank / Institution Name <span class="req">*</span></label>
+                  <input type="text" id="bank_name" name="bank_name" required placeholder="e.g. First Continental Bank">
+                </div>
+                <div class="form-group">
+                  <label for="swift_bic">SWIFT / BIC Code <span class="opt">(Optional)</span></label>
+                  <input type="text" id="swift_bic" name="swift_bic" placeholder="e.g. FCBKUS33">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="bank_account_holder">Bank Account Holder Name <span class="req">*</span></label>
+                <input type="text" id="bank_account_holder" name="bank_account_holder" required placeholder="Exact name registered on the bank account">
+              </div>
+
+              <div class="form-group">
+                <label for="bank_account_number">Bank Account Number / IBAN <span class="req">*</span></label>
+                <input type="text" id="bank_account_number" name="bank_account_number" required placeholder="e.g. DE89370400440532013000">
+              </div>
+
+              <div class="form-group">
+                <label for="relationship_note">Relationship / Entity Note <span class="opt">(Optional)</span></label>
+                <textarea id="relationship_note" name="relationship_note" rows="2" placeholder="Explain any discrepancy (e.g. 'Banking is managed by our parent company, Nimbus Group Holdings Ltd')"></textarea>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Document Uploads Grid -->
+          <div class="documents-upload-section">
+            <h3 class="form-section-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Supporting Verification Documents (3 Required Machine-Readable PDFs)
+            </h3>
+
+            <div class="docs-grid">
+              
+              <!-- Doc 1: Registration Certificate -->
+              <div class="doc-upload-box" id="box-reg-cert">
+                <div class="doc-upload-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <div class="doc-title">1. Registration Certificate</div>
+                <div class="doc-subtitle">Incorporation extract (Company Name, Reg No, Country)</div>
+                <input type="file" id="registration_certificate" name="registration_certificate" accept=".pdf">
+                <div class="file-status" id="status-reg-cert">Auto-loaded when preset is selected</div>
+              </div>
+
+              <!-- Doc 2: Tax Certificate -->
+              <div class="doc-upload-box" id="box-tax-cert">
+                <div class="doc-upload-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h6"/></svg>
+                </div>
+                <div class="doc-title">2. Tax Certificate</div>
+                <div class="doc-subtitle">Tax registration certificate with valid/expiry date</div>
+                <input type="file" id="tax_certificate" name="tax_certificate" accept=".pdf">
+                <div class="file-status" id="status-tax-cert">Auto-loaded when preset is selected</div>
+              </div>
+
+              <!-- Doc 3: Bank Letter -->
+              <div class="doc-upload-box" id="box-bank-letter">
+                <div class="doc-upload-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                </div>
+                <div class="doc-title">3. Bank Confirmation Letter</div>
+                <div class="doc-subtitle">Account holder confirmation on official bank letterhead</div>
+                <input type="file" id="bank_letter" name="bank_letter" accept=".pdf">
+                <div class="file-status" id="status-bank-letter">Auto-loaded when preset is selected</div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Submit Button Toolbar -->
+          <div class="form-submit-toolbar">
+            <button type="submit" class="btn-primary btn-lg" id="btn-submit-verification">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Execute Automated Verification Pipeline
+            </button>
+            <span class="submit-note">Streams live computation across all 7 verification stages via SSE.</span>
+          </div>
+
+        </form>
+      </div>
+
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- VIEW 2: LIVE VERIFICATION STREAM                             -->
+    <!-- ============================================================ -->
+    <section class="view" id="live-view">
+      
+      <!-- Progress Bar & Target Summary Header -->
+      <div class="section-card live-header-card">
+        <div class="live-target-info">
+          <div>
+            <span class="text-muted text-sm">Target Entity Under Verification:</span>
+            <h2 id="live-vendor-name">Awaiting Submission...</h2>
+            <div class="live-meta-tags" id="live-meta-tags">
+              <span class="tag-meta" id="live-tag-country">Country: -</span>
+              <span class="tag-meta" id="live-tag-tax">Tax ID: -</span>
+              <span class="tag-meta" id="live-tag-bank">Bank: -</span>
+            </div>
+          </div>
+          
+          <div class="live-status-box" id="live-status-box">
+            <div class="live-verdict-pill verdict-idle" id="live-verdict-pill">AWAITING RUN</div>
+            <div class="live-risk-gauge" id="live-risk-gauge-container">
+              <div class="risk-gauge-label">Risk Score: <span id="live-risk-val">-</span>/100</div>
+              <div class="risk-gauge-bar"><div class="risk-gauge-fill" id="live-risk-bar" style="width: 0%;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="progress-container">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="live-progress-bar" style="width: 0%;"></div>
+          </div>
+          <div class="progress-label-row">
+            <span id="live-progress-text">Stage 0 of 7 Complete</span>
+            <span id="live-progress-percent">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Stream Stages 1 to 7 -->
+      <div class="stages-timeline" id="stages-container">
+        
+        <!-- Stage 1 -->
+        <div class="stage-card stage-idle" id="stage-card-1">
+          <div class="stage-header">
+            <div class="stage-number">1</div>
+            <div class="stage-title-wrap">
+              <div class="stage-title">Intake & Schema Validation</div>
+              <div class="stage-sub">Mandatory fields check, email format, phone format</div>
+            </div>
+            <div class="stage-badge badge-idle">PENDING</div>
+          </div>
+          <div class="stage-body">
+            <div class="stage-summary">Awaiting engine start...</div>
+            <div class="stage-details"></div>
+          </div>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="stage-card stage-idle" id="stage-card-2">
+          <div class="stage-header">
+            <div class="stage-number">2</div>
+            <div class="stage-title-wrap">
+              <div class="stage-title">Document Validation</div>
+              <div class="stage-sub">3 PDF files present, binary validity, extractable text check</div>
+            </div>
+            <div class="stage-badge badge-idle">PENDING</div>
+          </div>
+          <div class="stage-body">
+            <div class="stage-summary">Awaiting previous stage...</div>
+            <div class="stage-details"></div>
+          </div>
+        </div>
+
+        <!-- Stage 3 -->
+        <div class="stage-card stage-idle" id="stage-card-3">
+          <div class="stage-header">
+            <div class="stage-number">3</div>
+            <div class="stage-title-wrap">
+              <div class="stage-title">Field Extraction from Documents</div>
+              <div class="stage-sub">Transparent 'Label: value' line parsing across all 3 PDFs</div>
+            </div>
+            <div class="stage-badge badge-idle">PENDING</div>
+          </div>
+          <div class="stage-body">
+            <div class="stage-summary">Awaiting previous stage...</div>
+            <div class="stage-details"></div>
+          </div>
+        </div>
+
+        <!-- Stage 4 -->
+        <div class="stage-card stage-idle" id="stage-card-4">
+          <div class="stage-header">
+            <div class="stage-number">4</div>
+            <div class="stage-title-wrap">
+              <div class="stage-title">Cross-Document Name Consistency</div>
+              <div class="stage-sub">Fuzzy similarity (suffixes stripped) & entity relationship note check</div>
+            </div>
+            <div class="stage-badge badge-idle">PENDING</div>
+          </div>
+          <div class="stage-body">
+            <div class="stage-summary">Awaiting previous stage...</div>
+            <div class="stage-details"></div>
+          </div>
+        </div>
+
+        <!-- Stage 5 -->
+        <div class="stage-card stage-idle" id="stage-card-5">
+          <div class="stage-header">
+            <div class="stage-number">5</div>
+            <div class="stage-title-wrap">
+              <div class="stage-title">Tax ID & Bank Country Consistency</div>
+              <div class="stage-sub">Country tax format matching, hard foreign country detection, IBAN check</div>
+            </div>
+            <div class="stage-badge badge-idle">PENDING</div>
+          </div>
+          <div class="stage-body">
+            <div class="stage-summary">Awaiting previous stage...</div>
+            <div class="stage-details"></div>
+          </div>
+        </div>
+
+        <!-- Stage 6 -->
+        <div class="stage-card stage-idle" id="stage-card-6">
+          <div class="stage-header">
+            <div class="stage-number">6</div>
+            <div class="stage-title-wrap">
+              <div class="stage-title">Risk & Vendor History Check</div>
+              <div class="stage-sub">Duplicate bank account reuse in ledger, returning vendor check, doc expiry</div>
+            </div>
+            <div class="stage-badge badge-idle">PENDING</div>
+          </div>
+          <div class="stage-body">
+            <div class="stage-summary">Awaiting previous stage...</div>
+            <div class="stage-details"></div>
+          </div>
+        </div>
+
+        <!-- Stage 7 -->
+        <div class="stage-card stage-idle" id="stage-card-7">
+          <div class="stage-header">
+            <div class="stage-number">7</div>
+            <div class="stage-title-wrap">
+              <div class="stage-title">Decision Priority & Risk Synthesis</div>
+              <div class="stage-sub">Priority-ordered rule synthesis, risk score calculation, vendor message</div>
+            </div>
+            <div class="stage-badge badge-idle">PENDING</div>
+          </div>
+          <div class="stage-body">
+            <div class="stage-summary">Awaiting previous stage...</div>
+            <div class="stage-details"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Generated Vendor Communication Box (Appears when completed) -->
+      <div class="section-card vendor-message-card hidden" id="vendor-message-card">
+        <div class="card-header">
+          <div>
+            <h3>Generated Vendor-Facing Communication</h3>
+            <p class="text-muted">Deterministic, actionable, tailored message based on verification outcome.</p>
+          </div>
+          <button class="btn-secondary btn-sm" id="btn-copy-msg">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy Message
+          </button>
+        </div>
+        <pre class="vendor-msg-box" id="vendor-msg-text"></pre>
+      </div>
+
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- VIEW 3: RUNS DASHBOARD & VENDOR LEDGER                      -->
+    <!-- ============================================================ -->
+    <section class="view" id="ledger-view">
+      
+      <!-- Metrics Row -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-icon metric-icon-total">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="metric-value" id="metric-total-runs">0</div>
+          <div class="metric-label">Total Submissions</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon metric-icon-approved">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="metric-value" id="metric-approved">0</div>
+          <div class="metric-label">Approved</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon metric-icon-pending">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="metric-value" id="metric-pending">0</div>
+          <div class="metric-label">Pending Clarification</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon metric-icon-rejected">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <div class="metric-value" id="metric-rejected">0</div>
+          <div class="metric-label">Rejected / Fraud Flags</div>
+        </div>
+      </div>
+
+      <!-- Past Runs Table Card -->
+      <div class="section-card">
+        <div class="card-header">
+          <div>
+            <h2>Verification Runs History</h2>
+            <p class="text-muted">Complete audit trail of all automated verification runs with stage traces.</p>
+          </div>
+          
+          <div class="table-filters">
+            <select id="filter-verdict">
+              <option value="">All Verdicts</option>
+              <option value="Approved">Approved</option>
+              <option value="Pending">Pending</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+            <input type="text" id="filter-search" placeholder="Search vendor name, country, run ID...">
+            <button class="btn-secondary btn-sm" id="btn-refresh-runs">Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="runs-table">
+            <thead>
+              <tr>
+                <th>Run ID</th>
+                <th>Vendor Company</th>
+                <th>Country</th>
+                <th>Verdict</th>
+                <th>Risk Score</th>
+                <th>Primary Decision Reason</th>
+                <th>Timestamp</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="runs-tbody">
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">No verification runs recorded yet. Execute a scenario or submission to start.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Vendor Ledger History Card -->
+      <div class="section-card">
+        <div class="card-header">
+          <div>
+            <h2>Vendor Historical Ledger</h2>
+            <p class="text-muted">Indexed bank accounts and approved tax registrations used for cross-submission fraud detection.</p>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="ledger-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Company Name</th>
+                <th>Tax ID</th>
+                <th>Bank Account Number</th>
+                <th>Country</th>
+                <th>Verdict</th>
+                <th>Recorded At</th>
+              </tr>
+            </thead>
+            <tbody id="ledger-tbody">
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">No ledger records found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Run Details Trace Modal -->
+  <div class="modal-overlay hidden" id="trace-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-title">Verification Run Trace: RUN-123</h3>
+          <p class="text-muted text-sm" id="modal-subtitle">Bluewave Logistics Inc - United States</p>
+        </div>
+        <button class="btn-ghost modal-close" id="btn-modal-close">&times;</button>
+      </div>
+
+      <div class="modal-body" id="modal-body">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
