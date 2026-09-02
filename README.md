@@ -1,145 +1,202 @@
-# Automated Vendor Onboarding Verification Process
+# Intake — Vendor Verification Process
 
-A production-grade, automated Vendor Onboarding Verification system built with **FastAPI**, **real PDF parsing (`pypdf`)**, **SQLite** ledger and trace storage, real-time **Server-Sent Events (SSE)** streaming, and an intuitive Single-Page Application (SPA).
+A working, live-runnable process for vendor onboarding (PS-2): a submission
+comes in, the process validates it, cross-references every document field
+against the form and against prior submissions, and produces **Approved /
+Pending / Rejected** with the reasoning attached — and, for anything not
+approved, a specific message back to the vendor about exactly what's needed.
 
----
+## Run it (one command)
 
-## The Problem Solved
-
-Before paying a vendor, procurement teams must verify legitimacy, tax compliance, and banking integrity across multiple jurisdictions. Manual review is slow, error-prone, and vulnerable to fraud (e.g. payment redirection, fake tax IDs, and mismatched paperwork).
-
-This automated engine takes vendor submissions (form fields + 3 machine-readable PDFs: **Registration Certificate**, **Tax Certificate**, **Bank Letter**), executes a deterministic 7-stage verification pipeline, and produces an explicit verdict: **Approved**, **Pending**, or **Rejected**, with clear decision reasoning and tailored vendor communications.
-
----
-
-## System Architecture & Pipeline
-
-```mermaid
-flowchart TD
-    subgraph UI ["Frontend SPA (Single-Page App)"]
-        S_View["Submit & Scenario Presets"]
-        L_View["Live SSE Stream"]
-        D_View["Runs & Vendor Ledger"]
-    end
-
-    subgraph API ["FastAPI Backend (One Process)"]
-        Routes["/api/verify-stream, /api/runs, /api/ledger"]
-        PDF["pypdf Text & Label Parser"]
-    end
-
-    subgraph Engine ["7-Stage Verification Pipeline"]
-        S1["1. Intake & Schema Validation"]
-        S2["2. Document Validation (PDFs)"]
-        S3["3. Field Extraction (Label: Value)"]
-        S4["4. Comprehensive Cross-Document Consistency Check"]
-        S5["5. Tax ID & Bank Country Consistency"]
-        S6["6. Risk & Vendor Ledger Check"]
-        S7["7. Decision Priority & Vendor Message"]
-    end
-
-    subgraph DB ["SQLite Storage"]
-        Runs["runs (Full Trace & Message)"]
-        Ledger["vendor_ledger (Bank & Tax History)"]
-    end
-
-    S_View -->|HTTP POST Form / Preset| Routes
-    Routes --> PDF --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
-    S7 -->|SSE Events Streamed Live| L_View
-    S7 -->|Persist Audit Record| DB
-    DB --> D_View
-```
-
----
-
-## The 7 Verification Stages (Exact Execution Order)
-
-1. **Intake & Schema Validation**: Ensures all required fields are present and emails/phones are well-formed.
-2. **Document Validation**: Verifies all 3 PDFs are present and contain extractable text.
-3. **Field Extraction from Documents**: Transparent, regex-based `Label: Value` parser extracting company names, tax IDs, registration numbers, valid/expiry dates, bank names, account numbers, and SWIFT/BIC codes.
-4. **Comprehensive Cross-Document Consistency Check**:
-   - Compares **EVERY** field between form and documents:
-     - **Exact Identifiers** (`registration_number`, `tax_id`, `bank_account_number`, `swift_bic`): Strict normalized exact matching (strips spaces/dashes).
-     - **Country Fields**: Normalized alias matching ("USA" $\rightarrow$ "united states", "UK" $\rightarrow$ "united kingdom").
-     - **Company Names**: Fuzzy similarity with legal corporate suffixes (`Ltd`, `LLC`, `Inc`, `GmbH`, `Pvt Ltd`, etc.) stripped.
-       - Registration / Tax cert name mismatch $< 55\%$ $\rightarrow$ **Critical Inconsistency (Rejected)**.
-       - Registration / Tax cert name variation $55-85\%$ $\rightarrow$ **Pending**.
-       - Bank account holder mismatch $\rightarrow$ **Pending** (cleared if `relationship_note` provided, never auto-rejects).
-     - **Bank Name**: Fuzzy similarity.
-   - For every discrepancy, the vendor message explicitly quotes **both the value on the form and the value on the document**.
-5. **Tax ID & Bank Country Consistency**: Country-specific format validation (US EIN, UK VAT, Germany VAT, India GSTIN, Singapore UEN, UAE TRN). If a tax ID fails the declared country but matches a different country (e.g., US entity with UK VAT `GB998877665`), it is flagged as a **hard inconsistency / fraud signal (Rejected)**.
-6. **Risk & Vendor History Check**: Queries historical `vendor_ledger` to detect **duplicate bank account reuse** under different company names (critical fraud override), recognizes returning approved vendors, and checks certificate expiration.
-7. **Decision Priority & Vendor Message**: Synthesizes all findings using a deterministic, explicit priority tree and generates a warm, direct, actionable vendor-facing message for non-approved cases.
-
----
-
-## Strict Decision Priority Order
-
-| Priority | Trigger Condition | Final Verdict | Action / Rationale |
-| :---: | :--- | :---: | :--- |
-| **1** | Duplicate bank account reuse under different company | **Rejected** | Critical payment redirection fraud; escalated to compliance team. |
-| **2** | Tax ID format provably matches a different country | **Rejected** | Hard, provable inconsistency; no benign explanation. |
-| **3** | Registration or Tax cert issued to a different company ($< 55\%$) | **Rejected** | Uploaded identity documents belong to an entirely different entity. |
-| **4** | Missing required fields or unreadable documents | **Pending** | Fixable gap; lists exact missing items. |
-| **5** | Field values mismatch between form and document | **Pending** | Quotes both form and document values in vendor message. |
-| **6** | Returning approved vendor with expired tax document | **Pending (Lightweight)** | Asks *only* for the renewed tax document; avoids full re-review. |
-| **7** | Bank account holder name mismatch (no note) | **Pending** | Asks for clarification / relationship note; never auto-rejects. |
-| **8** | Soft non-blocking signals only (e.g., personal email) | **Approved** | Approved with informational notes. |
-| **9** | All checks clean | **Approved** | Cleared for immediate payment processing. |
-
----
-
-## Quickstart
-
-### 1. One-Command Startup
 ```bash
-./run.sh
+cd backend
+pip install -r requirements.txt
+python3 sample_data/make_pdfs.py     # generates the sample PDFs once
+uvicorn app.main:app --reload
 ```
-Or manually:
+
+Open **http://localhost:8000** — that's it. The FastAPI backend serves the
+frontend directly, so there's no separate dev server to keep alive during a
+demo.
+
+Optional: set `ANTHROPIC_API_KEY` in your environment to have the vendor
+follow-up message polished by Claude instead of the built-in template. Not
+required — the pipeline works identically either way (see "AI usage" below).
+
+## What's actually running
+
+- **Backend**: Python / FastAPI. `app/engine.py` is the rules engine —
+  every check is a small, pure function so each decision is inspectable and
+  testable on its own.
+- **Documents**: real PDFs, parsed with `pypdf` (`app/extraction.py`), not
+  pre-baked JSON pretending to be documents.
+- **Storage**: SQLite (`onboarding.db`). Two tables — `runs` (full trace of
+  every submission, backs the Ledger) and `vendor_ledger` (one row per
+  decided vendor, used to catch duplicate bank accounts and recognize
+  returning vendors).
+- **Live run view**: the `/api/submissions/stream` and
+  `/api/demo-scenarios/{key}/stream` endpoints are genuine Server-Sent
+  Event streams — each stage is computed for real and pushed to the
+  browser the moment it completes (not a pre-recorded animation).
+- **Frontend**: a single static HTML/CSS/JS file (`frontend/index.html`),
+  no build step, so "run it" really does mean one command.
+
+## Try it without typing anything
+
+The **Submit** page has nine one-click scenario buttons — happy path, six
+edge cases, and two "seed" runs needed to set up history for the
+duplicate-account and returning-vendor cases. Run `seed_vantage` before
+`edge_duplicate_bank_account`, and `seed_anchor` before
+`edge_returning_vendor_expired_doc` (the buttons are ordered this way on
+the page).
+
+You can also fill out the manual form and attach your own PDFs — the
+sample-doc PDFs in `backend/sample_data/docs/` are good starting points to
+edit if you want to construct a new scenario.
+
+## The pipeline (7 stages, in order)
+
+1. **Intake & schema validation** — required fields present, email/phone
+   well-formed.
+2. **Document validation** — all three PDFs present and machine-readable.
+3. **Field extraction** — pulls company name, registration number, tax ID,
+   country, account holder, account number, bank name, and SWIFT/BIC out
+   of the actual PDF text.
+4. **Cross-document consistency check** — every field extracted from every
+   document is compared against what was typed on the form, not just
+   company names (full table below).
+5. **Tax ID & bank country consistency** — does the tax ID's format
+   actually match the declared country (checked positively, by
+   pattern-matching known formats, not just "looks weird")?
+6. **Risk & vendor history check** — duplicate bank account reuse under a
+   different name, returning-vendor recognition, soft signals like a
+   personal email domain.
+7. **Decision** — synthesizes everything into one verdict.
+
+## Stage 4 in detail — what gets cross-checked, and how
+
+| Document | Field | Compared to | Match type |
+|---|---|---|---|
+| Registration cert | Company name | Submitted legal name | Fuzzy (legal suffixes stripped) |
+| Registration cert | Registration number | Submitted registration number | Exact (formatting-normalized) |
+| Registration cert | Country of incorporation | Submitted country | Alias-normalized exact |
+| Tax cert | Company name | Submitted legal name | Fuzzy |
+| Tax cert | Tax ID | Submitted tax ID | Exact (formatting-normalized) |
+| Tax cert | Country | Submitted country | Alias-normalized exact |
+| Bank letter | Account holder name | Submitted name (or trading name) | Fuzzy |
+| Bank letter | Account number | Submitted bank account number | Exact (formatting-normalized) |
+| Bank letter | Bank name | Submitted bank name | Fuzzy |
+| Bank letter | SWIFT/BIC | Submitted SWIFT/BIC | Exact (formatting-normalized) |
+
+Two deliberately different comparison strategies:
+
+- **Exact identifiers** (registration number, tax ID, account number,
+  SWIFT/BIC) are normalized (spaces/dashes stripped, uppercased) and then
+  required to match *exactly*. No fuzzy similarity here — a single
+  transposed digit in an account number is a real, meaningful difference,
+  not a formatting quirk.
+- **Names and countries** use fuzzy matching or alias normalization,
+  because "Acme Supplies Ltd" vs "Acme Supplies LLC" or "USA" vs "United
+  States" are the same thing written two ways.
+
+Severity is **not uniform** across this stage — see the edge case table
+below for why a document issued to the wrong company is treated completely
+differently from a typo'd account number.
+
+## The edge cases, and why they're not trivial
+
+The interesting part of this problem isn't detecting *that* something is
+inconsistent — it's deciding **how severely to treat each kind of
+inconsistency**, because treating every anomaly the same way is exactly
+what makes real procurement review bad (either too strict, and legitimate
+vendors get bounced for no reason, or too loose, and fraud gets through).
+
+| Scenario | What's unusual | Verdict | Why |
+|---|---|---|---|
+| **"Bluewave" with Meridian's certs** | Registration and tax certificates are issued to a completely different company than the one applying | **Rejected** | A registration/tax certificate is issued to one specific legal entity — there's no legitimate reason it would belong to someone else. Treated as a hard stop (wrong upload or attempted identity misuse), not a request for clarification. |
+| **Bluewave, account number typo** | The bank account number typed on the form doesn't match the number printed on Bluewave's own (correct) bank letter | **Pending** | Unlike a wrong company's documents, a mismatched account number is a very plausible honest typo — a single transposed digit in a 12-digit number is not a fraud signal on its own. Ask the vendor to confirm rather than reject. |
+| **Nimbus Retail** | Bank account is held by the parent company, not the applicant | **Pending** | A name mismatch alone has too many legitimate explanations (subsidiaries, holding companies, factoring agents) to auto-reject. We ask for a one-line clarification instead of guessing or blocking. Adding a `relationship_note` explaining it clears this check entirely. |
+| **Meridian Traders** | Declares "United States" but the tax ID is *shaped* like a UK VAT number | **Rejected** | Unlike a fuzzy name mismatch, this is a positive, provable inconsistency — there's no benign reason a US tax ID would be formatted like a UK one. Treated as a fabrication signal, not a typo. |
+| **Sterling Freight Partners** | Submits a bank account number that's already on file for a *different* company (Vantage Freight Co) | **Rejected**, overrides everything else | This is the classic payment-redirection fraud pattern. Even though Sterling's own documents are internally consistent, reusing someone else's payout account is disqualifying on its own — it doesn't matter how clean the rest of the submission looks. |
+| **Anchor Supplies (renewal)** | A previously-approved vendor resubmits with one expired tax certificate | **Pending**, lightweight | We recognize this vendor from history and don't re-run a full suspicious-until-proven review — the message asks for exactly the one thing that's actually missing, not a generic "please resubmit everything." |
+
+The decision priority (hard fraud signals > wrong-entity documents > missing
+info > typo-prone field mismatches > soft signals) is implemented explicitly
+and commented in `app/engine.py` — that ordering *is* the judgment call this
+exercise is testing, so it's kept visible rather than buried in a scoring
+formula.
+
+## Decision priority, in full (most severe first)
+
+1. Duplicate bank account reuse under a different company name → **Rejected**, overrides everything else.
+2. Tax ID format provably matches a different country than declared → **Rejected**.
+3. Registration or tax certificate issued to a different company entirely → **Rejected**.
+4. Missing required fields or unreadable documents → **Pending**.
+5. Returning vendor (prior approval on file) with only one expired document → **Pending**, lightweight.
+6. Name mismatches (bank holder) or any other field mismatch (registration number, tax ID, account number, SWIFT/BIC, country, bank name) → **Pending**, specific ask.
+7. Only soft signals remain (e.g. personal email domain) → **Approved**, noted.
+8. Nothing flagged → **Approved**.
+
+## Assumptions made (noted per the case study's guidance to state them)
+
+- Three documents are treated as required for a complete submission:
+  registration certificate, tax certificate, bank confirmation letter.
+- Tax ID format validation covers US, UK, Germany, India, Singapore, and
+  UAE as a representative sample — not exhaustive, but enough to
+  demonstrate the mechanism (adding a country is a one-line regex in
+  `app/rules.py`).
+- Country name comparisons normalize a small set of common aliases (USA/
+  U.S./America → "united states", UK/U.K./Great Britain → "united
+  kingdom") — not exhaustive, but enough to avoid false positives from
+  obvious formatting differences.
+- "Duplicate bank account" and other exact-identifier checks are compared
+  after stripping spaces and dashes and uppercasing — not a full
+  IBAN-aware normalization, but enough to catch formatting noise without
+  false negatives.
+- A vendor-provided `relationship_note` is treated as sufficient
+  explanation for a moderate bank-holder name mismatch (e.g. "banking
+  handled by our parent, Acme Holdings") — it downgrades that check from a
+  blocking warning to a passed, but still logged, note. A real system
+  might also want to verify the note against a document.
+
+## AI usage
+
+The rules engine itself is deterministic on purpose — every check is a
+regex, a similarity score, or a database lookup, so I can defend exactly
+why any given verdict came out the way it did in the interview. The one
+place I use an LLM (optionally) is polishing the vendor-facing message in
+`app/messaging.py`: the rules engine decides *what* to say deterministically,
+and Claude (if an API key is set) is only asked to make the wording
+friendlier — with a plain-template fallback so a missing key or network
+hiccup never breaks the live demo.
+
+## Project structure
+
+```
+backend/
+  app/
+    main.py        FastAPI app, SSE streaming endpoints, dashboard API
+    engine.py       Pipeline orchestrator + decision synthesis
+    rules.py        Name matching, ID/country normalization, tax ID formats, email checks
+    extraction.py   PDF text extraction + field parsing
+    messaging.py    Vendor message generation (template + optional Claude polish)
+    models.py       Pydantic schemas
+    db.py           SQLite persistence (runs + vendor ledger)
+  sample_data/
+    make_pdfs.py    Generates all sample PDF documents
+    scenarios.py    Defines the 9 demo scenarios
+    run_scenarios.py  Regression test: runs all scenarios, checks verdicts
+frontend/
+  index.html        Submit / Live Run / Ledger — single file, no build step
+```
+
+## Regression check
+
 ```bash
-.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-Open **http://localhost:8000** in your browser.
-
-### 2. Running Regression Tests
-Run all 8 scenario tests with automated assertions:
-```bash
-.venv/bin/pytest -v test_scenarios.py
-# or
-.venv/bin/python test_scenarios.py
+cd backend
+python3 sample_data/run_scenarios.py
 ```
 
----
-
-## Test Scenarios & Expected Outcomes
-
-1. **Scenario 1: Bluewave Logistics Inc (US) — Happy Path**
-   - Clean US submission, all names and identifiers match, valid tax ID format and expiry date (2027-12-31).
-   - **Verdict: Approved** (Risk score $\le 25$).
-
-2. **Scenario 2: Bluewave with Meridian Traders Docs — Wrong Company Attached**
-   - Bluewave form data submitted with Meridian Traders LLC's registration and tax certificates attached.
-   - **Verdict: Rejected** (Critical identity document mismatch).
-
-3. **Scenario 3: Form Field Discrepancy — Account Number Typo**
-   - Bluewave form typed as `999999999999` while bank letter shows `000123456789`.
-   - **Verdict: Pending** (Quotes both values in vendor communication).
-
-4. **Scenario 4a: Nimbus Retail Ltd (UK) — Parent Bank (No Note)**
-   - Bank holder is `Nimbus Group Holdings Ltd` with no explanation.
-   - **Verdict: Pending** (Asks for clarification).
-
-5. **Scenario 4b: Nimbus Retail Ltd (UK) — Parent Bank (WITH Note)**
-   - Relationship note: *"Banking is handled by our parent company, Nimbus Group Holdings Ltd."*
-   - **Verdict: Approved** (Noted informationally, non-blocking).
-
-6. **Scenario 5: Meridian Traders LLC (US) — Cross-Country Tax ID Fraud**
-   - Declares US jurisdiction, but provides UK VAT format `GB998877665`.
-   - **Verdict: Rejected** (Hard fraud signal).
-
-7. **Scenario 6: Duplicate Bank Account Reuse (Multi-step)**
-   - **Step 6a**: `Vantage Freight Co` (DE) registers bank `DE89370400440532013000` $\rightarrow$ **Approved**.
-   - **Step 6b**: `Sterling Freight Partners` (DE) submits the *same* bank account $\rightarrow$ **Rejected** (Overrides all checks, escalated to compliance).
-
-8. **Scenario 7: Returning Vendor with Expired Document (Multi-step)**
-   - **Step 7a**: `Anchor Supplies Pvt Ltd` (IN) initial registration $\rightarrow$ **Approved**.
-   - **Step 7b**: `Anchor Supplies Pvt Ltd` (IN) annual re-verification with tax cert expired on 2025-06-30 $\rightarrow$ **Lightweight Pending** (Recognizes prior approval, asks only for renewed tax certificate).
+Runs all 9 scenarios directly against the engine (no server needed) and
+prints PASS/FAIL against the expected verdict for each — useful any time
+you tweak a rule.
