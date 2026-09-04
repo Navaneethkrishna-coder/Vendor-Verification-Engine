@@ -56,6 +56,7 @@ class VerificationResult(BaseModel):
     vendor_message: Optional[str] = None
     is_returning_vendor: bool = False
     requires_escalation: bool = False
+    reason_code: Optional[str] = None
 
 
 class LedgerRecord(BaseModel):

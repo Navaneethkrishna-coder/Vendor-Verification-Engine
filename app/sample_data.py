@@ -669,6 +669,198 @@ SCENARIOS: Dict[str, Dict[str, Any]] = {
                 "footer": "Verified signature and active account mandate."
             }
         }
+    },
+
+    # -------------------------------------------------------------------------
+    # Scenario 8: Sanctions Hard Match -> Rejected
+    # -------------------------------------------------------------------------
+    "scenario_8_sanctions_hard_match": {
+        "id": "scenario_8_sanctions_hard_match",
+        "name": "8. Talon Sentinel Trading Co (US) - Sanctions Hard Match",
+        "expected_verdict": "Rejected",
+        "badge_color": "red",
+        "description": "Exact match to restricted-party list (Talon Sentinel Trading Co). Statutory compliance stop overrides all other checks -> Rejected.",
+        "form_data": {
+            "legal_company_name": "Talon Sentinel Trading Co",
+            "trading_name": "",
+            "country": "United States",
+            "address": "1200 North Market St, Wilmington, DE",
+            "contact_name": "Marcus Vance",
+            "contact_email": "m.vance@talonsentinel.com",
+            "contact_phone": "+1-302-555-0839",
+            "registration_number": "US-DE-8192045",
+            "tax_id": "82-1946285",
+            "bank_name": "Apex Commercial Bank",
+            "bank_account_holder": "Talon Sentinel Trading Co",
+            "bank_account_number": "440012849103",
+            "swift_bic": "APEXUS33",
+            "vendor_category": "Logistics & Freight",
+            "relationship_note": ""
+        },
+        "documents": {
+            "registration_certificate": {
+                "title": "Certificate of Incorporation",
+                "subtitle": "State of Delaware - Division of Corporations",
+                "fields": {
+                    "Company Name": "Talon Sentinel Trading Co",
+                    "Registration Number": "US-DE-8192045",
+                    "Country": "United States",
+                    "Incorporation Date": "2019-06-15"
+                },
+                "footer": "Official certification of valid corporate existence under Delaware General Corporation Law."
+            },
+            "tax_certificate": {
+                "title": "Tax Identification & Status Certificate",
+                "subtitle": "Department of the Treasury - Internal Revenue Service",
+                "fields": {
+                    "Taxpayer Name": "Talon Sentinel Trading Co",
+                    "Tax ID": "82-1946285",
+                    "Country": "United States",
+                    "Valid Until": "2028-12-31"
+                },
+                "footer": "Form 147C - Verification of Federal Employer Identification Number."
+            },
+            "bank_letter": {
+                "title": "Bank Account Confirmation Letter",
+                "subtitle": "Apex Commercial Bank - Corporate Accounts",
+                "fields": {
+                    "Account Holder": "Talon Sentinel Trading Co",
+                    "Bank Name": "Apex Commercial Bank",
+                    "Account Number": "440012849103",
+                    "SWIFT/BIC": "APEXUS33",
+                    "Currency": "USD"
+                },
+                "footer": "This letter certifies that the account is active and in good standing."
+            }
+        }
+    },
+
+    # -------------------------------------------------------------------------
+    # Scenario 9: Sanctions Moderate Match -> Pending (sanctions_review)
+    # -------------------------------------------------------------------------
+    "scenario_9_sanctions_moderate_match": {
+        "id": "scenario_9_sanctions_moderate_match",
+        "name": "9. Talon Sentinal Trading Company (US) - Sanctions Review",
+        "expected_verdict": "Pending",
+        "badge_color": "amber",
+        "description": "Applicant 'Talon Sentinal Trading Company' shows ~81% similarity to restricted party 'Talon Sentinel Trading Co'. Requires manual compliance review -> Pending.",
+        "form_data": {
+            "legal_company_name": "Talon Sentinal Trading Company",
+            "trading_name": "",
+            "country": "United States",
+            "address": "700 Delaware Ave, Wilmington, DE",
+            "contact_name": "Julian Vance",
+            "contact_email": "j.vance@talonsentinal.com",
+            "contact_phone": "+1-302-555-0191",
+            "registration_number": "US-DE-6391052",
+            "tax_id": "93-5182940",
+            "bank_name": "First Liberty National Bank",
+            "bank_account_holder": "Talon Sentinal Trading Company",
+            "bank_account_number": "550098712345",
+            "swift_bic": "FLNBUS33",
+            "vendor_category": "Logistics & Freight",
+            "relationship_note": ""
+        },
+        "documents": {
+            "registration_certificate": {
+                "title": "Certificate of Incorporation",
+                "subtitle": "State of Delaware - Division of Corporations",
+                "fields": {
+                    "Company Name": "Talon Sentinal Trading Company",
+                    "Registration Number": "US-DE-6391052",
+                    "Country": "United States",
+                    "Incorporation Date": "2019-06-15"
+                },
+                "footer": "Official certification of valid corporate existence under Delaware General Corporation Law."
+            },
+            "tax_certificate": {
+                "title": "Tax Identification & Status Certificate",
+                "subtitle": "Department of the Treasury - Internal Revenue Service",
+                "fields": {
+                    "Taxpayer Name": "Talon Sentinal Trading Company",
+                    "Tax ID": "93-5182940",
+                    "Country": "United States",
+                    "Valid Until": "2028-12-31"
+                },
+                "footer": "Form 147C - Verification of Federal Employer Identification Number."
+            },
+            "bank_letter": {
+                "title": "Bank Account Confirmation Letter",
+                "subtitle": "First Liberty National Bank - Commercial Accounts Division",
+                "fields": {
+                    "Account Holder": "Talon Sentinal Trading Company",
+                    "Bank Name": "First Liberty National Bank",
+                    "Account Number": "550098712345",
+                    "SWIFT/BIC": "FLNBUS33",
+                    "Currency": "USD"
+                },
+                "footer": "This letter certifies that the account is active and in good standing."
+            }
+        }
+    },
+
+    # -------------------------------------------------------------------------
+    # Scenario 10: Embargoed Country -> Rejected
+    # -------------------------------------------------------------------------
+    "scenario_10_embargoed_country": {
+        "id": "scenario_10_embargoed_country",
+        "name": "10. Bluewave Logistics (Freedonia) - Embargoed Country",
+        "expected_verdict": "Rejected",
+        "badge_color": "red",
+        "description": "Declares country 'Freedonia' which is on the embargoed jurisdiction list. Mandatory compliance stop overrides all other checks -> Rejected.",
+        "form_data": {
+            "legal_company_name": "Bluewave Logistics Inc",
+            "trading_name": "",
+            "country": "Freedonia",
+            "address": "12 Freedom Plaza, Capital City, Freedonia",
+            "contact_name": "Dana Cole",
+            "contact_email": "dana.cole@bluewavelogistics.com",
+            "contact_phone": "+1-302-555-0148",
+            "registration_number": "FD-CR-9021843",
+            "tax_id": "FD-8839201",
+            "bank_name": "Freedonia Commercial Bank",
+            "bank_account_holder": "Bluewave Logistics Inc",
+            "bank_account_number": "770012948192",
+            "swift_bic": "FCBKUS33",
+            "vendor_category": "Logistics & Freight",
+            "relationship_note": ""
+        },
+        "documents": {
+            "registration_certificate": {
+                "title": "Certificate of Incorporation",
+                "subtitle": "Ministry of Commerce - Freedonia",
+                "fields": {
+                    "Company Name": "Bluewave Logistics Inc",
+                    "Registration Number": "FD-CR-9021843",
+                    "Country": "Freedonia",
+                    "Incorporation Date": "2018-04-12"
+                },
+                "footer": "Official certification of corporate registry of Freedonia."
+            },
+            "tax_certificate": {
+                "title": "Tax Identification & Status Certificate",
+                "subtitle": "Ministry of Revenue - Freedonia",
+                "fields": {
+                    "Taxpayer Name": "Bluewave Logistics Inc",
+                    "Tax ID": "FD-8839201",
+                    "Country": "Freedonia",
+                    "Valid Until": "2027-12-31"
+                },
+                "footer": "Certificate of Tax Registration - Freedonia Revenue Service."
+            },
+            "bank_letter": {
+                "title": "Bank Account Confirmation Letter",
+                "subtitle": "Freedonia Commercial Bank - Commercial Accounts Division",
+                "fields": {
+                    "Account Holder": "Bluewave Logistics Inc",
+                    "Bank Name": "Freedonia Commercial Bank",
+                    "Account Number": "770012948192",
+                    "SWIFT/BIC": "FCBKUS33",
+                    "Currency": "USD"
+                },
+                "footer": "This letter certifies that the account is active and in good standing."
+            }
+        }
     }
 }
 

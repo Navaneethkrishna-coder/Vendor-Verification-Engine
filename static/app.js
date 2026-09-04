@@ -13,6 +13,18 @@ document.addEventListener("DOMContentLoaded", () => {
 let currentScenarios = {};
 let liveEventSource = null;
 
+// The ordered verification stages (Stage 1 Sanctions screening runs first)
+const STAGE_ORDER = [
+  { id: 1, key: "sanctions", title: "Sanctions & Restricted-Party Screening" },
+  { id: 2, key: "intake", title: "Intake & Schema Validation" },
+  { id: 3, key: "documents", title: "Document Validation" },
+  { id: 4, key: "extraction", title: "Field Extraction from Documents" },
+  { id: 5, key: "consistency", title: "Cross-Document Consistency Check" },
+  { id: 6, key: "tax_bank", title: "Tax ID & Bank Country Consistency" },
+  { id: 7, key: "history", title: "Risk & Vendor History Check" },
+  { id: 8, key: "decision", title: "Decision Priority & Risk Synthesis" }
+];
+
 // -------------------------------------------------------------
 // 1. Navigation & View Switching
 // -------------------------------------------------------------
@@ -175,15 +187,21 @@ async function executeVerificationStream(formData) {
 
   document.getElementById("vendor-message-card").classList.add("hidden");
 
-  // Reset all 7 stages to idle
-  for (let i = 1; i <= 7; i++) {
+  // Reset all 8 stages to idle
+  for (let i = 1; i <= 8; i++) {
     const card = document.getElementById(`stage-card-${i}`);
-    card.className = "stage-card stage-idle";
-    const badge = card.querySelector(".stage-badge");
-    badge.className = "stage-badge badge-idle";
-    badge.textContent = "WAITING";
-    card.querySelector(".stage-summary").textContent = "Awaiting engine stage...";
-    card.querySelector(".stage-details").innerHTML = "";
+    if (card) {
+      card.className = "stage-card stage-idle";
+      const badge = card.querySelector(".stage-badge");
+      if (badge) {
+        badge.className = "stage-badge badge-idle";
+        badge.textContent = "WAITING";
+      }
+      const sum = card.querySelector(".stage-summary");
+      if (sum) sum.textContent = "Awaiting engine stage...";
+      const det = card.querySelector(".stage-details");
+      if (det) det.innerHTML = "";
+    }
   }
 
   // Stream POST via fetch with ReadableStream reader
@@ -250,7 +268,7 @@ function handleStreamEvent(eventName, payload) {
     updateStageCard(stage);
 
     document.getElementById("live-progress-bar").style.width = `${progress}%`;
-    document.getElementById("live-progress-text").textContent = `Stage ${stage.stage_number} of 7: ${stage.stage_name}`;
+    document.getElementById("live-progress-text").textContent = `Stage ${stage.stage_number} of 8: ${stage.stage_name}`;
     document.getElementById("live-progress-percent").textContent = `${progress}%`;
   }
 
@@ -411,12 +429,18 @@ function renderRunsTable(runs) {
     else if (r.verdict === "Pending") verdictBadge = `<span class="scenario-badge badge-pending">Pending</span>`;
     else verdictBadge = `<span class="scenario-badge badge-rejected">Rejected</span>`;
 
+    let reasonBadge = "";
+    if (r.reason_code) {
+      const isSanctions = r.reason_code.startsWith("sanctions");
+      reasonBadge = `<div style="margin-top: 4px;"><span class="scenario-badge ${isSanctions ? 'badge-rejected' : 'badge-pending'}" style="font-size: 0.68rem; padding: 2px 6px;">${escapeHtml(r.reason_code)}</span></div>`;
+    }
+
     return `
       <tr>
         <td><code>${r.run_id}</code></td>
         <td><strong>${escapeHtml(r.company_name)}</strong></td>
         <td>${escapeHtml(r.country)}</td>
-        <td>${verdictBadge}</td>
+        <td>${verdictBadge}${reasonBadge}</td>
         <td><strong style="color: ${r.risk_score > 50 ? 'var(--danger)' : (r.risk_score > 20 ? 'var(--warning)' : 'var(--success)')};">${r.risk_score}/100</strong></td>
         <td style="max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(r.primary_reason || '')}">${escapeHtml(r.primary_reason || '-')}</td>
         <td class="text-sm text-muted">${dateFormatted}</td>
@@ -488,9 +512,10 @@ window.openRunTraceModal = async function(runId) {
       <div style="margin-bottom: 1.5rem; background: var(--bg-primary); padding: 1rem; border-radius: 8px;">
         <h4 style="margin-bottom: 0.5rem; color: var(--primary);">Primary Decision Rationale</h4>
         <p style="font-size: 0.9rem; color: #F1F5F9;">${escapeHtml(data.primary_reason || 'Clean verification.')}</p>
+        <div style="margin-top: 6px; font-size: 0.8rem; color: var(--text-muted);">Internal Reason Code: <code style="color: var(--primary);">${escapeHtml(data.reason_code || 'all_clean')}</code></div>
       </div>
 
-      <h4 style="margin-bottom: 0.75rem;">7-Stage Execution Breakdown</h4>
+      <h4 style="margin-bottom: 0.75rem;">8-Stage Execution Breakdown</h4>
       <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
     `;
 

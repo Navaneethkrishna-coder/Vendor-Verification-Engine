@@ -57,7 +57,7 @@ async def test_scenario_1_happy_path():
     res = await execute_scenario("scenario_1_approved")
     assert res["verdict"] == "Approved"
     assert res["risk_score"] <= 25
-    assert len(res["stages"]) == 7
+    assert len(res["stages"]) == 8
 
 
 @pytest.mark.anyio
@@ -96,7 +96,7 @@ async def test_scenario_4b_name_mismatch_with_note():
     reset_db()
     res = await execute_scenario("scenario_4b_approved")
     assert res["verdict"] == "Approved"
-    assert res["stages"][3]["flag_type"] == "name_mismatch_explained"
+    assert res["stages"][4]["flag_type"] == "name_mismatch_explained"
 
 
 @pytest.mark.anyio
@@ -137,6 +137,145 @@ async def test_scenario_7_returning_vendor_expired_doc():
     assert res_b["verdict"] == "Pending"
     assert res_b["is_returning_vendor"] is True
     assert "tax certificate" in res_b["vendor_message"].lower() and "renewed" in res_b["vendor_message"].lower()
+
+
+@pytest.mark.anyio
+async def test_scenario_8_sanctions_hard_match():
+    init_db()
+    reset_db()
+    res = await execute_scenario("scenario_8_sanctions_hard_match")
+    assert res["verdict"] == "Rejected"
+    assert res["reason_code"] == "sanctions_match"
+    assert res["risk_score"] == 100
+    assert res["requires_escalation"] is True
+    assert res["stages"][0]["status"] == "FAIL"
+    assert res["stages"][0]["flag_type"] == "sanctions_hard_match"
+    # Compliance-safe generic vendor communication (no sanctions disclosure)
+    assert "unable to proceed" in res["vendor_message"].lower()
+    assert "compliance team" in res["vendor_message"].lower()
+    assert "sanction" not in res["vendor_message"].lower()
+    assert "restricted" not in res["vendor_message"].lower()
+    # Internal reasoning shows match details and statutory override
+    assert "talon sentinel trading co" in res["primary_reason"].lower()
+    assert "overrode all subsequent checks" in res["primary_reason"].lower()
+
+
+@pytest.mark.anyio
+async def test_scenario_9_sanctions_moderate_match():
+    init_db()
+    reset_db()
+    res = await execute_scenario("scenario_9_sanctions_moderate_match")
+    assert res["verdict"] == "Pending"
+    assert res["reason_code"] == "sanctions_review"
+    assert res["stages"][0]["status"] == "WARNING"
+    assert res["stages"][0]["flag_type"] == "sanctions_review"
+    # Compliance-safe generic pending review communication (no specific field prompts)
+    assert "under additional review" in res["vendor_message"].lower()
+    assert "follow up shortly" in res["vendor_message"].lower()
+    assert "sanction" not in res["vendor_message"].lower()
+    assert "please provide" not in res["vendor_message"].lower()
+    # Internal reasoning shows percentage and matched entry
+    assert "talon sentinel trading co" in res["primary_reason"].lower()
+    assert "81." in res["primary_reason"] or "81%" in res["primary_reason"]
+
+
+@pytest.mark.anyio
+async def test_scenario_10_embargoed_country():
+    init_db()
+    reset_db()
+    res = await execute_scenario("scenario_10_embargoed_country")
+    assert res["verdict"] == "Rejected"
+    assert res["reason_code"] == "sanctions_match"
+    assert res["risk_score"] == 100
+    assert res["stages"][0]["status"] == "FAIL"
+    # Generic vendor message
+    assert "unable to proceed" in res["vendor_message"].lower()
+    assert "sanction" not in res["vendor_message"].lower()
+    # Internal reasoning shows embargoed country details
+    assert "freedonia" in res["primary_reason"].lower()
+    assert "overrode all subsequent checks" in res["primary_reason"].lower()
+
+
+@pytest.mark.anyio
+async def test_suite_order_regression_bluewave_stays_approved():
+    """
+    Permanent regression guard:
+    Run the entire scenario suite sequentially in a single shared database session
+    (without resetting DB between scenarios), then assert Bluewave happy path specifically
+    still returns Approved. This ensures no subsequent scenario can silently collide with
+    Bluewave's identifying data.
+    """
+    init_db()
+    reset_db()
+    scenarios_in_order = [
+        "scenario_1_approved",
+        "scenario_2_wrong_company_docs",
+        "scenario_3_field_typo_pending",
+        "scenario_4a_pending",
+        "scenario_4b_approved",
+        "scenario_5_rejected",
+        "scenario_6a_seed_vantage",
+        "scenario_6b_sterling_duplicate",
+        "scenario_7a_seed_anchor",
+        "scenario_7b_anchor_expired",
+        "scenario_8_sanctions_hard_match",
+        "scenario_9_sanctions_moderate_match",
+        "scenario_10_embargoed_country",
+    ]
+    for s_key in scenarios_in_order:
+        await execute_scenario(s_key)
+
+    # Post-suite re-run of Bluewave Logistics happy path
+    res = await execute_scenario("scenario_1_approved")
+    assert res["verdict"] == "Approved"
+    assert res["risk_score"] <= 25
+    assert len(res["stages"]) == 8
+
+
+@pytest.mark.anyio
+async def test_rejected_run_cannot_claim_bank_account():
+    """
+    Ensure rejected runs cannot claim or lock a bank account number in the vendor ledger.
+    Even if an unverified/rejected submission attempted to use the same bank account,
+    a subsequent legitimate vendor submission must never be flagged as reusing that account.
+    """
+    from app.database import save_run
+    from app.models import VerificationResult
+
+    init_db()
+    reset_db()
+
+    # Seed a rejected run attempting to use Bluewave's bank account
+    fake_rejected_sub = VendorSubmission(
+        legal_company_name="Fraudulent Rogue Entity",
+        trading_name=None,
+        country="United States",
+        address="99 Scam Way, Dover, DE",
+        contact_name="Malicious Actor",
+        contact_email="bad@malicious.com",
+        contact_phone="+1-302-555-0999",
+        registration_number="US-DE-0000001",
+        tax_id="99-1112233",
+        bank_name="First Continental Bank",
+        bank_account_holder="Fraudulent Rogue Entity",
+        bank_account_number="000123456789",  # Deliberate collision with Bluewave
+        swift_bic="FCBKUS33"
+    )
+    fake_rejected_result = VerificationResult(
+        run_id="RUN-REJECTED-SEED",
+        timestamp="2026-09-03T10:00:00",
+        submission=fake_rejected_sub,
+        verdict=VerdictStatus.REJECTED,
+        risk_score=100,
+        primary_reason="Simulated hard rejection for testing"
+    )
+    save_run(fake_rejected_result)
+
+    # Legitimate Bluewave submission with bank account 000123456789
+    res = await execute_scenario("scenario_1_approved")
+    assert res["verdict"] == "Approved"
+    assert res["risk_score"] <= 25
+
 
 
 async def run_all_tests():
@@ -214,6 +353,48 @@ async def run_all_tests():
     assert res7b["verdict"] == "Pending"
     print("    [PASS] Verdict: Pending (Returning Vendor Lightweight Follow-up) | Risk Score:", res7b["risk_score"])
     print("    Primary Reason:", res7b["primary_reason"])
+    print()
+
+    print("--> Running Test 8: Talon Sentinel Trading Co (US) - Sanctions Hard Match...")
+    res8 = await execute_scenario("scenario_8_sanctions_hard_match")
+    assert res8["verdict"] == "Rejected"
+    assert res8["reason_code"] == "sanctions_match"
+    assert "unable to proceed" in res8["vendor_message"].lower()
+    assert "sanction" not in res8["vendor_message"].lower()
+    print("    [PASS] Verdict: Rejected (Sanctions Hard Match) | Risk Score: 100")
+    print("    Primary Reason:", res8["primary_reason"])
+    print("    Vendor Message Snippet:", repr(res8["vendor_message"][:80]))
+    print()
+
+    print("--> Running Test 9: Talon Sentinal Trading Company (US) - Sanctions Moderate Match...")
+    res9 = await execute_scenario("scenario_9_sanctions_moderate_match")
+    assert res9["verdict"] == "Pending"
+    assert res9["reason_code"] == "sanctions_review"
+    assert "under additional review" in res9["vendor_message"].lower()
+    assert "sanction" not in res9["vendor_message"].lower()
+    print("    [PASS] Verdict: Pending (Sanctions Moderate Review) | Risk Score:", res9["risk_score"])
+    print("    Primary Reason:", res9["primary_reason"])
+    print("    Vendor Message Snippet:", repr(res9["vendor_message"][:80]))
+    print()
+
+    print("--> Running Test 10: Bluewave Logistics Inc (Freedonia) - Embargoed Country...")
+    res10 = await execute_scenario("scenario_10_embargoed_country")
+    assert res10["verdict"] == "Rejected"
+    assert res10["reason_code"] == "sanctions_match"
+    assert "unable to proceed" in res10["vendor_message"].lower()
+    assert "sanction" not in res10["vendor_message"].lower()
+    print("    [PASS] Verdict: Rejected (Embargoed Country) | Risk Score: 100")
+    print("    Primary Reason:", res10["primary_reason"])
+    print("    Vendor Message Snippet:", repr(res10["vendor_message"][:80]))
+    print()
+
+    print("--> Running Test 11 (Permanent Regression Check): Bluewave Logistics Happy Path after full suite...")
+    res11 = await execute_scenario("scenario_1_approved")
+    assert res11["verdict"] == "Approved"
+    assert res11["risk_score"] <= 25
+    print("    [PASS] Verdict: Approved | Risk Score:", res11["risk_score"])
+    print("    Primary Reason:", res11["primary_reason"])
+    print("    [PASS] Verified: Bluewave remains Approved with zero data collisions after entire suite runs.")
     print()
 
     print("================================================================")

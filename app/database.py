@@ -30,11 +30,17 @@ def init_db():
             risk_score INTEGER NOT NULL,
             primary_reason TEXT,
             vendor_message TEXT,
+            reason_code TEXT,
             submission_json TEXT NOT NULL,
             stages_json TEXT NOT NULL,
             created_at TEXT NOT NULL
         )
     """)
+    # Migration if reason_code column missing
+    cursor.execute("PRAGMA table_info(runs)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if "reason_code" not in columns:
+        cursor.execute("ALTER TABLE runs ADD COLUMN reason_code TEXT")
 
     # Table 2: Vendor ledger for history checks
     cursor.execute("""
@@ -77,8 +83,8 @@ def save_run(result: VerificationResult):
     cursor.execute("""
         INSERT OR REPLACE INTO runs (
             run_id, company_name, country, verdict, risk_score,
-            primary_reason, vendor_message, submission_json, stages_json, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            primary_reason, vendor_message, reason_code, submission_json, stages_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         result.run_id,
         result.submission.legal_company_name,
@@ -87,6 +93,7 @@ def save_run(result: VerificationResult):
         result.risk_score,
         result.primary_reason,
         result.vendor_message,
+        result.reason_code,
         json.dumps(submission_dict),
         json.dumps(stages_list),
         result.timestamp
@@ -142,6 +149,7 @@ def get_runs(limit: int = 100, offset: int = 0, status: Optional[str] = None, se
             "risk_score": r["risk_score"],
             "primary_reason": r["primary_reason"],
             "vendor_message": r["vendor_message"],
+            "reason_code": r["reason_code"] if "reason_code" in r.keys() else None,
             "submission": json.loads(r["submission_json"]),
             "stages": json.loads(r["stages_json"]),
             "created_at": r["created_at"]
@@ -166,6 +174,7 @@ def get_run(run_id: str) -> Optional[Dict[str, Any]]:
         "risk_score": row["risk_score"],
         "primary_reason": row["primary_reason"],
         "vendor_message": row["vendor_message"],
+        "reason_code": row["reason_code"] if "reason_code" in row.keys() else None,
         "submission": json.loads(row["submission_json"]),
         "stages": json.loads(row["stages_json"]),
         "created_at": row["created_at"]
@@ -189,6 +198,7 @@ def find_bank_account_history(bank_account_number: str) -> List[Dict[str, Any]]:
     cursor.execute("""
         SELECT * FROM vendor_ledger 
         WHERE REPLACE(UPPER(bank_account_number), ' ', '') = ?
+          AND UPPER(verdict) IN ('APPROVED', 'PENDING')
         ORDER BY id DESC
     """, (cleaned_acc,))
     rows = cursor.fetchall()

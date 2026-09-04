@@ -67,7 +67,7 @@
             <h2>One-Click Scenario Presets</h2>
             <p class="text-muted">Instantly load test cases with pre-generated machine-readable PDFs to test edge cases & fraud rules live.</p>
           </div>
-          <span class="pill-info">8 Scenario Presets Ready</span>
+          <span class="pill-info">11 Scenario Presets Ready</span>
         </div>
 
         <div class="scenarios-grid">
@@ -158,6 +158,33 @@
             <p class="scenario-desc">Returning vendor resubmitting with expired tax doc (2025-06-30). Triggers lightweight follow-up message.</p>
             <button class="btn-scenario-load">Load & Run Scenario</button>
           </div>
+
+          <!-- Scenario 8 -->
+          <div class="scenario-card" data-scenario="scenario_8_sanctions_hard_match">
+            <div class="scenario-badge badge-rejected">Rejected</div>
+            <div class="scenario-title">8. Sanctions Hard Match</div>
+            <div class="scenario-vendor">Talon Sentinel Trading Co (US)</div>
+            <p class="scenario-desc">Applicant matches restricted party list at 100%. Mandatory compliance stop overrides all other checks -> Rejected.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 9 -->
+          <div class="scenario-card" data-scenario="scenario_9_sanctions_moderate_match">
+            <div class="scenario-badge badge-pending">Pending</div>
+            <div class="scenario-title">9. Sanctions Review (Moderate)</div>
+            <div class="scenario-vendor">Talon Sentinal Trading Company (US)</div>
+            <p class="scenario-desc">Applicant shows ~81% similarity to restricted party Talon Sentinel Trading Co. Requires manual compliance review -> Pending.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
+
+          <!-- Scenario 10 -->
+          <div class="scenario-card" data-scenario="scenario_10_embargoed_country">
+            <div class="scenario-badge badge-rejected">Rejected</div>
+            <div class="scenario-title">10. Embargoed Country</div>
+            <div class="scenario-vendor">Bluewave Logistics Inc (Freedonia)</div>
+            <p class="scenario-desc">Applicant declares country 'Freedonia', which is an embargoed jurisdiction. Statutory compliance stop -> Rejected.</p>
+            <button class="btn-scenario-load">Load & Run Scenario</button>
+          </div>
         </div>
       </div>
 
@@ -210,6 +237,7 @@
                     <option value="India">India</option>
                     <option value="Singapore">Singapore</option>
                     <option value="United Arab Emirates">United Arab Emirates</option>
+                    <option value="Freedonia">Freedonia (Embargoed Jurisdiction)</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -379,7 +407,7 @@
         </div>
       </div>
 
-      <!-- Live Stream Stages 1 to 7 -->
+      <!-- Live Stream Stages 1 to 8 -->
       <div class="stages-timeline" id="stages-container">
         
         <!-- Stage 1 -->
@@ -387,8 +415,8 @@
           <div class="stage-header">
             <div class="stage-number">1</div>
             <div class="stage-title-wrap">
-              <div class="stage-title">Intake & Schema Validation</div>
-              <div class="stage-sub">Mandatory fields check, email format, phone format</div>
+              <div class="stage-title">Sanctions & Restricted-Party Screening</div>
+              <div class="stage-sub">Screen company, trading name, contact, and country against restricted lists</div>
             </div>
             <div class="stage-badge badge-idle">PENDING</div>
           </div>
@@ -403,8 +431,8 @@
           <div class="stage-header">
             <div class="stage-number">2</div>
             <div class="stage-title-wrap">
-              <div class="stage-title">Document Validation</div>
-              <div class="stage-sub">3 PDF files present, binary validity, extractable text check</div>
+              <div class="stage-title">Intake & Schema Validation</div>
+              <div class="stage-sub">Mandatory fields check, email format, phone format</div>
             </div>
             <div class="stage-badge badge-idle">PENDING</div>
           </div>
@@ -419,8 +447,8 @@
           <div class="stage-header">
             <div class="stage-number">3</div>
             <div class="stage-title-wrap">
-              <div class="stage-title">Field Extraction from Documents</div>
-              <div class="stage-sub">Transparent 'Label: value' line parsing across all 3 PDFs</div>
+              <div class="stage-title">Document Validation</div>
+              <div class="stage-sub">3 PDF files present, binary validity, extractable text check</div>
             </div>
             <div class="stage-badge badge-idle">PENDING</div>
           </div>
@@ -435,8 +463,8 @@
           <div class="stage-header">
             <div class="stage-number">4</div>
             <div class="stage-title-wrap">
-              <div class="stage-title">Cross-Document Name Consistency</div>
-              <div class="stage-sub">Fuzzy similarity (suffixes stripped) & entity relationship note check</div>
+              <div class="stage-title">Field Extraction from Documents</div>
+              <div class="stage-sub">Transparent 'Label: value' line parsing across all 3 PDFs</div>
             </div>
             <div class="stage-badge badge-idle">PENDING</div>
           </div>
@@ -451,8 +479,8 @@
           <div class="stage-header">
             <div class="stage-number">5</div>
             <div class="stage-title-wrap">
-              <div class="stage-title">Tax ID & Bank Country Consistency</div>
-              <div class="stage-sub">Country tax format matching, hard foreign country detection, IBAN check</div>
+              <div class="stage-title">Cross-Document Name Consistency</div>
+              <div class="stage-sub">Fuzzy similarity (suffixes stripped) & entity relationship note check</div>
             </div>
             <div class="stage-badge badge-idle">PENDING</div>
           </div>
@@ -467,8 +495,8 @@
           <div class="stage-header">
             <div class="stage-number">6</div>
             <div class="stage-title-wrap">
-              <div class="stage-title">Risk & Vendor History Check</div>
-              <div class="stage-sub">Duplicate bank account reuse in ledger, returning vendor check, doc expiry</div>
+              <div class="stage-title">Tax ID & Bank Country Consistency</div>
+              <div class="stage-sub">Country tax format matching, hard foreign country detection, IBAN check</div>
             </div>
             <div class="stage-badge badge-idle">PENDING</div>
           </div>
@@ -482,6 +510,22 @@
         <div class="stage-card stage-idle" id="stage-card-7">
           <div class="stage-header">
             <div class="stage-number">7</div>
+            <div class="stage-title-wrap">
+              <div class="stage-title">Risk & Vendor History Check</div>
+              <div class="stage-sub">Duplicate bank account reuse in ledger, returning vendor check, doc expiry</div>
+            </div>
+            <div class="stage-badge badge-idle">PENDING</div>
+          </div>
+          <div class="stage-body">
+            <div class="stage-summary">Awaiting previous stage...</div>
+            <div class="stage-details"></div>
+          </div>
+        </div>
+
+        <!-- Stage 8 -->
+        <div class="stage-card stage-idle" id="stage-card-8">
+          <div class="stage-header">
+            <div class="stage-number">8</div>
             <div class="stage-title-wrap">
               <div class="stage-title">Decision Priority & Risk Synthesis</div>
               <div class="stage-sub">Priority-ordered rule synthesis, risk score calculation, vendor message</div>

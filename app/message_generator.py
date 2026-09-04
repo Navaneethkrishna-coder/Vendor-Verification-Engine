@@ -36,7 +36,14 @@ def generate_vendor_message(
         return msg
 
     if verdict == VerdictStatus.REJECTED:
-        if flag_type == "duplicate_bank_account" or "duplicate bank" in primary_reason.lower():
+        if flag_type in ["sanctions_match", "sanctions_hard_match"] or (flag_type and "sanctions" in flag_type) or "sanctions" in primary_reason.lower() or "embargoed" in primary_reason.lower():
+            msg = f"Dear {contact},\n\n"
+            msg += f"Thank you for submitting your vendor onboarding details for {company}.\n\n"
+            msg += "We're unable to proceed with this application. This has been referred to our compliance team.\n\n"
+            msg += "Best regards,\nCompliance & Risk Operations Team"
+            return msg
+
+        elif flag_type == "duplicate_bank_account" or "duplicate bank" in primary_reason.lower():
             acc_tail = submission.bank_account_number[-4:] if len(submission.bank_account_number) >= 4 else submission.bank_account_number
             msg = f"Dear {contact},\n\n"
             msg += f"Thank you for your onboarding submission for {company}.\n\n"
@@ -81,7 +88,14 @@ def generate_vendor_message(
             return msg
 
     # verdict == VerdictStatus.PENDING
-    if flag_type == "returning_vendor_expired_doc" or "expired" in primary_reason.lower():
+    if flag_type in ["sanctions_review", "sanctions_moderate_match"] or (flag_type and "sanctions" in flag_type) or "sanctions" in primary_reason.lower():
+        msg = f"Dear {contact},\n\n"
+        msg += f"Thank you for your onboarding submission for {company}.\n\n"
+        msg += "Your application is under additional review. We'll follow up shortly.\n\n"
+        msg += "Best regards,\nCompliance & Risk Operations Team"
+        return msg
+
+    elif flag_type == "returning_vendor_expired_doc" or "expired" in primary_reason.lower():
         expiry_date = context.get("expired_date", "the stated validity period")
         msg = f"Dear {contact},\n\n"
         msg += f"Thank you for submitting the updated vendor profile for {company}.\n\n"
