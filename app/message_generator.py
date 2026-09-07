@@ -122,7 +122,17 @@ def generate_vendor_message(
         msg += "Once updated, we will resume processing your application promptly.\n\nBest regards,\nVendor Operations Team"
         return msg
 
-    elif flag_type == "name_mismatch" or "bank account holder" in primary_reason.lower() or "name mismatch" in primary_reason.lower():
+    elif flag_type == "name_mismatch_explained" or (flag_type in ["name_mismatch", "name_mismatch_unexplained"] and submission.relationship_note):
+        bank_holder = context.get("bank_holder_name", submission.bank_account_holder)
+        msg = f"Dear {contact},\n\n"
+        msg += f"Thank you for submitting your onboarding details for {company}.\n\n"
+        msg += f"During our review of your documentation, we identified a variation between your legal company name ('{submission.legal_company_name}') and the account holder name on your bank confirmation letter ('{bank_holder}').\n\n"
+        msg += f"We have received your relationship explanation: \"{submission.relationship_note}\". Your application is currently under review by our operations team to confirm this relationship before completing your onboarding.\n\n"
+        msg += "No further action is required from you at this time. We will follow up promptly if any additional details are needed.\n\n"
+        msg += "Best regards,\nVendor Operations Team"
+        return msg
+
+    elif flag_type in ["name_mismatch", "name_mismatch_unexplained"] or "bank account holder" in primary_reason.lower() or "name mismatch" in primary_reason.lower():
         bank_holder = context.get("bank_holder_name", submission.bank_account_holder)
         msg = f"Dear {contact},\n\n"
         msg += f"Thank you for submitting your onboarding details for {company}.\n\n"

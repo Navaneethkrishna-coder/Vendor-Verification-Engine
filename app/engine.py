@@ -641,34 +641,38 @@ async def run_verification_engine(
     if best_bank_similarity >= 0.92:
         s4_notes.append(f"Bank account holder '{bank_holder_name}' matches company name ({best_bank_similarity*100:.1f}%)")
     elif 0.55 <= best_bank_similarity < 0.92:
+        bank_holder_mismatch = True
         if has_relationship_note:
             bank_holder_explained = True
-            s4_notes.append(f"Moderate bank name variation ({best_bank_similarity*100:.1f}%), cleared by relationship note: \"{submission.relationship_note}\"")
+            s4_notes.append(f"Moderate bank name variation ({best_bank_similarity*100:.1f}%), vendor explanation note recorded for review: \"{submission.relationship_note}\"")
         else:
-            bank_holder_mismatch = True
-            field_discrepancies.append({
-                "document": "Bank Confirmation Letter",
-                "field": "Bank Account Holder Name",
-                "form_value": submission.legal_company_name,
-                "doc_value": bank_holder_name,
-                "type": "bank_holder_mismatch"
-            })
             s4_notes.append(f"Bank account holder name mismatch ({best_bank_similarity*100:.1f}%): held by '{bank_holder_name}' (No explanation note)")
+        field_discrepancies.append({
+            "document": "Bank Confirmation Letter",
+            "field": "Bank Account Holder Name",
+            "form_value": submission.legal_company_name,
+            "doc_value": bank_holder_name,
+            "type": "bank_holder_mismatch",
+            "explained": has_relationship_note,
+            "note": submission.relationship_note if has_relationship_note else None
+        })
     else:
         # Severe bank holder mismatch (< 55%)
+        bank_holder_mismatch = True
         if has_relationship_note:
             bank_holder_explained = True
-            s4_notes.append(f"Separate bank holder '{bank_holder_name}' ({best_bank_similarity*100:.1f}%), relationship note recorded: \"{submission.relationship_note}\"")
+            s4_notes.append(f"Separate bank holder '{bank_holder_name}' ({best_bank_similarity*100:.1f}%), vendor explanation note recorded for review: \"{submission.relationship_note}\"")
         else:
-            bank_holder_mismatch = True
-            field_discrepancies.append({
-                "document": "Bank Confirmation Letter",
-                "field": "Bank Account Holder Name",
-                "form_value": submission.legal_company_name,
-                "doc_value": bank_holder_name,
-                "type": "bank_holder_mismatch"
-            })
             s4_notes.append(f"Severe bank holder mismatch ({best_bank_similarity*100:.1f}%): held by '{bank_holder_name}' without relationship note")
+        field_discrepancies.append({
+            "document": "Bank Confirmation Letter",
+            "field": "Bank Account Holder Name",
+            "form_value": submission.legal_company_name,
+            "doc_value": bank_holder_name,
+            "type": "bank_holder_mismatch",
+            "explained": has_relationship_note,
+            "note": submission.relationship_note if has_relationship_note else None
+        })
 
     # Comparison 8: Bank Letter Account Number (Exact Normalized Match)
     doc_bank_acc = bank_fields.get("account_number")
@@ -725,14 +729,19 @@ async def run_verification_engine(
         s5_flag = "critical_wrong_company_doc"
     elif field_discrepancies:
         s5_status = StageStatus.WARNING
-        s5_summary = f"Field consistency check flagged {len(field_discrepancies)} discrepancy item(s) between form and documents."
-        s5_risk = 45
-        s5_flag = "field_mismatch"
-    elif bank_holder_explained:
-        s5_status = StageStatus.INFO
-        s5_summary = f"All fields match. Bank account name variation cleared by vendor relationship explanation note."
-        s5_risk = 10
-        s5_flag = "name_mismatch_explained"
+        bank_disc = next((d for d in field_discrepancies if d.get("type") == "bank_holder_mismatch"), None)
+        if bank_disc and bank_disc.get("explained") and len(field_discrepancies) == 1:
+            s5_summary = f"Bank account holder name variation with vendor explanation note on file. Pending manual reviewer confirmation."
+            s5_risk = 30
+            s5_flag = "name_mismatch_explained"
+        elif bank_disc and not bank_disc.get("explained") and len(field_discrepancies) == 1:
+            s5_summary = f"Bank account holder name mismatch without explanation note. Pending vendor clarification."
+            s5_risk = 45
+            s5_flag = "name_mismatch_unexplained"
+        else:
+            s5_summary = f"Field consistency check flagged {len(field_discrepancies)} discrepancy item(s) between form and documents."
+            s5_risk = 45
+            s5_flag = "field_mismatch"
     else:
         s5_status = StageStatus.PASS
         s5_summary = "All 10 extracted document fields match the submitted form values exactly."
@@ -1016,14 +1025,22 @@ async def run_verification_engine(
         verdict = VerdictStatus.PENDING
         disc = field_discrepancies[0]
         if disc.get("type") == "bank_holder_mismatch":
-            primary_reason = f"Bank account holder name mismatch: Account is held by '{disc['doc_value']}' rather than '{submission.legal_company_name}', and no relationship explanation note was provided."
-            decision_flag = "name_mismatch"
-            reason_code = "name_mismatch"
+            if disc.get("explained") or has_relationship_note:
+                note_text = disc.get("note") or submission.relationship_note or ""
+                primary_reason = f"Bank account holder doesn't match the company name. Vendor's stated explanation: '{note_text}'. Review and confirm before approving."
+                decision_flag = "name_mismatch_explained"
+                reason_code = "name_mismatch_explained"
+                accumulated_risk = max(accumulated_risk, 30)
+            else:
+                primary_reason = f"Bank account holder name mismatch: Account is held by '{disc['doc_value']}' rather than '{submission.legal_company_name}', and no relationship explanation note was provided."
+                decision_flag = "name_mismatch_unexplained"
+                reason_code = "name_mismatch_unexplained"
+                accumulated_risk = max(accumulated_risk, 45)
         else:
             primary_reason = f"Field Discrepancy: {disc['field']} on form ('{disc['form_value']}') does not match {disc['document']} ('{disc['doc_value']}')."
             decision_flag = "field_mismatch"
             reason_code = "field_mismatch"
-        accumulated_risk = max(accumulated_risk, 45)
+            accumulated_risk = max(accumulated_risk, 45)
 
     else:
         # Priorities 9 & 10: Approved (with notes if soft signals exist)

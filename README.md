@@ -134,7 +134,7 @@ flowchart TD
 * Tax ID format validation covers US, UK, Germany, India, Singapore, and UAE as representative examples.
 * Country comparisons normalize common aliases such as USA/U.S./America and UK/U.K./Great Britain.
 * Duplicate bank account and other exact-identifier checks strip spaces and dashes and uppercase values before comparison.
-* A vendor-provided `relationship_note` can explain a moderate bank-holder name mismatch, although a real system might also verify the relationship against supporting documentation.
+* A vendor-provided `relationship_note` provides context to a human reviewer for rapid triage when a moderate bank-holder name mismatch occurs, but does not auto-approve the mismatch.
 
 ## AI usage
 

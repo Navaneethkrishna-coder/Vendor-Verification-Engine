@@ -335,14 +335,14 @@ SCENARIOS: Dict[str, Dict[str, Any]] = {
     },
 
     # -------------------------------------------------------------------------
-    # Scenario 4b: Legitimate Name Mismatch (Parent Bank / WITH Note) -> Approved
+    # Scenario 4b: Legitimate Name Mismatch (Parent Bank / WITH Note) -> Pending
     # -------------------------------------------------------------------------
     "scenario_4b_approved": {
         "id": "scenario_4b_approved",
         "name": "4b. Nimbus Retail (UK) - Parent Bank (WITH Note)",
-        "expected_verdict": "Approved",
-        "badge_color": "green",
-        "description": "Identical to 4a, but includes vendor explanation note ('Banking is handled by our parent company...'). Clears check as non-blocking.",
+        "expected_verdict": "Pending",
+        "badge_color": "amber",
+        "description": "Identical to 4a, but includes vendor explanation note ('Banking is handled by our parent company...'). Surfaces explanation for rapid reviewer sign-off -> Pending.",
         "form_data": {
             "legal_company_name": "Nimbus Retail Ltd",
             "trading_name": "Nimbus Retail",

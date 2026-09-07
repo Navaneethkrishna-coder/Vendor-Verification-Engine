@@ -432,7 +432,9 @@ function renderRunsTable(runs) {
     let reasonBadge = "";
     if (r.reason_code) {
       const isSanctions = r.reason_code.startsWith("sanctions");
-      reasonBadge = `<div style="margin-top: 4px;"><span class="scenario-badge ${isSanctions ? 'badge-rejected' : 'badge-pending'}" style="font-size: 0.68rem; padding: 2px 6px;">${escapeHtml(r.reason_code)}</span></div>`;
+      const isExplained = r.reason_code === "name_mismatch_explained";
+      const badgeClass = isSanctions ? 'badge-rejected' : (isExplained ? 'badge-info' : 'badge-pending');
+      reasonBadge = `<div style="margin-top: 4px;"><span class="scenario-badge ${badgeClass}" style="font-size: 0.68rem; padding: 2px 6px;">${escapeHtml(r.reason_code)}</span></div>`;
     }
 
     return `

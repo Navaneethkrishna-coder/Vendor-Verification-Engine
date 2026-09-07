@@ -95,8 +95,11 @@ async def test_scenario_4b_name_mismatch_with_note():
     init_db()
     reset_db()
     res = await execute_scenario("scenario_4b_approved")
-    assert res["verdict"] == "Approved"
+    assert res["verdict"] == "Pending"
+    assert res["reason_code"] == "name_mismatch_explained"
     assert res["stages"][4]["flag_type"] == "name_mismatch_explained"
+    assert "review and confirm before approving" in res["primary_reason"].lower()
+    assert "nimbus group holdings" in res["primary_reason"].lower()
 
 
 @pytest.mark.anyio
@@ -319,8 +322,10 @@ async def run_all_tests():
 
     print("--> Running Test 4b: Nimbus Retail (UK) - Parent Bank (WITH Note)...")
     res4b = await execute_scenario("scenario_4b_approved")
-    assert res4b["verdict"] == "Approved"
-    print("    [PASS] Verdict: Approved (Non-blocking note) | Risk Score:", res4b["risk_score"])
+    assert res4b["verdict"] == "Pending"
+    assert res4b["reason_code"] == "name_mismatch_explained"
+    assert "review and confirm before approving" in res4b["primary_reason"].lower()
+    print("    [PASS] Verdict: Pending (Rapid Reviewer Sign-off) | Risk Score:", res4b["risk_score"])
     print("    Primary Reason:", res4b["primary_reason"])
     print()
 
